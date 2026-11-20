@@ -1,0 +1,30 @@
+# 解密出来的数据：绝对不要提交
+out/
+export/
+work/
+data/
+*.db
+*.db-wal
+*.db-shm
+*.db.factory/
+*.kvdb
+*.material
+*.dat
+*.log
+__pycache__/
+*.pyc
+
+# 密钥与账号配置
+account_key.json
+keys.json
+keys_hook.json
+config.json
+!dsh-plugin/package.json
+*entitlements.wx.plist
+
+# 构建产物
+bin/
+*.dylib
+*.app/
+node_modules/
+.DS_Store

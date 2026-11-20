@@ -1,0 +1,3 @@
+- insert:
+    - id: wx-browser
+      name: '@local/dsh-wx-browser'

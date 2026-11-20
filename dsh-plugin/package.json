@@ -1,0 +1,35 @@
+{
+  "name": "@local/dsh-wx-browser",
+  "version": "1.0.2",
+  "private": true,
+  "type": "module",
+  "description": "微信聊天记录浏览器：在 DSH 左侧栏开一个页面，按人/按时间翻记录、全局搜索、AI 总结",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "server.mjs",
+    "setup.mjs",
+    "cordis.patch.yml",
+    "bin",
+    "docs",
+    "icon.svg"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ]
+    }
+  }
+}
