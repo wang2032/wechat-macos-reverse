@@ -313,7 +313,7 @@ ctypes.CDLL("/opt/homebrew/lib/libzstd.1.dylib")   # 见 zstdlib.py
 | `serve.py` | 本地检索服务（127.0.0.1:8765，`/api/search?q=`） |
 | `zstdlib.py` | zstd 解压（ctypes 调 libzstd） |
 | `persona_build.py` / `persona_gen.py` / `make_viz.py` | 语言风格画像与可视化页 |
-| `selfnotify/` | 新消息监听 + macOS 通知 + 日报 |
+| `src/wxr/watcher.py` / `notify.py` / `digest.py` | 新消息监听 + 通知 + 日报 |
 | `wxdigest.py` | 按"我参与过"生成日报 |
 | `assistant/` | 本地 Web 助手（会话列表/消息流/总结/建议/自动回复引擎） |
 
@@ -338,8 +338,8 @@ python3 build_export.py                 # → export/wechat.db
 python3 gen_html.py && python3 serve.py
 
 # 4. 增量监听（只读、不锁库）
-python3 selfnotify/watch_new.py --seed
-python3 selfnotify/watch_new.py
+wxr watch --seed
+wxr watch
 ```
 
 ---

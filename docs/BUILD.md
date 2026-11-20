@@ -7,20 +7,20 @@
 静态链接（推荐，产物可单独分发，不依赖 brew 里的 dylib）：
 
 ```bash
-mkdir -p bin
-cc -O2 -o bin/wxq tools/wxq.c \
+mkdir -p build
+cc -O2 -o build/wxq tools/wxq.c \
   "$(brew --prefix sqlcipher)/lib/libsqlcipher.a" \
   "$(brew --prefix openssl@3)/lib/libcrypto.a" \
   -framework Security -framework CoreFoundation -lz
 
 # 校验：只剩系统框架依赖
-otool -L bin/wxq
+otool -L build/wxq
 ```
 
 动态链接：
 
 ```bash
-cc -O2 -I"$(brew --prefix sqlcipher)/include" -o wxq tools/wxq.c \
+cc -O2 -I"$(brew --prefix sqlcipher)/include" -o build/wxq tools/wxq.c \
    -L"$(brew --prefix sqlcipher)/lib" -lsqlcipher
 ```
 

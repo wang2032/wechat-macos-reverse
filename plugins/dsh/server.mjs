@@ -1,5 +1,6 @@
 /**
- * 微信聊天记录服务：只用 Node 标准库 + 自带的 bin/wxq（静态 SQLCipher）。
+ * 微信聊天记录服务：只用 Node 标准库 + 静态链接的 wxq（SQLCipher）。
+ * wxq 默认取插件内 bin/wxq，其次取仓库 build/wxq（make tools 产物）。
  * 不依赖 Python，也不碰微信运行中的文件（先 clone 一份快照再读）。
  */
 import { createServer } from 'node:http'
@@ -11,7 +12,20 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 
 const HERE = path.dirname(new URL(import.meta.url).pathname)
-const WXQ = path.join(HERE, 'bin', 'wxq')
+
+// wxq 查找顺序：环境变量 → 插件自带 bin/ → 仓库根 build/（make tools 的产物）→ PATH
+function resolveWxq() {
+  const cands = [
+    process.env.WX_BROWSER_WXQ,
+    path.join(HERE, 'bin', 'wxq'),
+    path.join(HERE, '..', '..', 'build', 'wxq'),
+  ].filter(Boolean)
+  for (const c of cands) {
+    try { if (fs.statSync(c).isFile()) return c } catch {}
+  }
+  return 'wxq'
+}
+const WXQ = resolveWxq()
 const HOME = os.homedir()
 const BASE = path.join(HOME, 'Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files')
 const PORT = Number(process.env.WX_BROWSER_PORT || 8778)

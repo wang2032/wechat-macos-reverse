@@ -7,6 +7,17 @@
 
 ---
 
+## 第零步：装好命令
+
+```bash
+make tools          # 编译 build/wxq / wxdec / wxhook.dylib
+./wxr --help        # 免安装启动器；相当于 PYTHONPATH=src python3 -m wxr.cli
+```
+
+下面所有 `wxr ...` 都可以直接换成 `./wxr ...`。想装成全局命令：`python3 -m pip install -e .`
+
+---
+
 ## 第一步：拿到你账号的主密钥（只要一次）
 
 微信用 SQLCipher 加密每个库，**每个账号一把 32 字节主密钥**，账号内所有库共用。密钥不落盘，只在运行时存在，所以得从进程里抓。
@@ -38,7 +49,7 @@ grep 'rounds=256000' /tmp/wxhook.log | head
 
 ```bash
 DB="$HOME/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/<账号>/db_storage/session/session.db"
-./bin/wxq "$DB" "$KEY" "select count(*) from sqlite_master"   # 出数字就成了
+./build/wxq "$DB" "$KEY" "select count(*) from sqlite_master"   # 出数字就成了
 ```
 
 > 抓完把副本退出、换回官方 `/Applications/WeChat.app`，别再让改签版跑着。
@@ -81,9 +92,10 @@ from messages where text like '%合同%' order by ts desc limit 20;
 ### 场景 C：我想每天收一份「今天我聊了啥」
 
 ```bash
-python3 wxdigest.py                       # 今天的日报，打印
-python3 wxdigest.py --date 2026-11-19     # 昨天
-python3 wxdigest.py --json                # 结构化，给 agent 二次加工
+wxr digest                                # 今天的日报，打印
+wxr digest --date 2026-11-19              # 昨天
+wxr digest --json                         # 结构化，给 agent 二次加工
+wxr digest --push                         # 顺带推到企业微信群机器人（需 webhook）
 ```
 
 口径是「我参与过」——当天我在这个会话里发过言才算。输出分【群里】【私聊】【还没回】。
@@ -106,7 +118,7 @@ dsh plugin install ./plugins/dsh          # 或用插件管理界面装 tgz
 ```bash
 wxr persona --viz                     # 统计 + 画像卡 + 可视化页
 # 同一命令一并生成 system_prompt.md
-python3 assistant/make_skill.py      # → assistant/skill.md（当 system prompt 更完整）
+wxr skill                            # → ~/.cache/wxr/skill.md（当 system prompt 更完整）
 ```
 
 `system_prompt.md` 是给通用模型用的；`skill.md` 更结构化，适合 OpenClaw / Claude Code 这类能装 skill 的宿主。
