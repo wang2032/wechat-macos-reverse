@@ -2,11 +2,11 @@
 """按「谁 + 时间范围」查聊天记录并总结。
 
 用法:
-  python3 chatquery.py --who "老婆" --from 2026-11-01 --to 2026-11-18
-  python3 chatquery.py --who 羽毛球群 --days 7 --ask "最近在约什么局"
-  python3 chatquery.py --who 老张 --yesterday
-  python3 chatquery.py --who 老婆 --days 3 --no-ai     # 不调模型，只做统计
-  python3 chatquery.py --who 老婆 --days 3 --json
+  wxr ask --who "老婆" --from 2026-11-01 --to 2026-11-18
+  wxr ask --who 羽毛球群 --days 7 --ask "最近在约什么局"
+  wxr ask --who 老张 --yesterday
+  wxr ask --who 老婆 --days 3 --no-ai      # 不调模型，只做统计
+  wxr ask --who 老婆 --days 3 --json
 """
 import argparse
 import datetime as dt
@@ -16,11 +16,8 @@ import re
 import sys
 import time
 
-HERE = pathlib.Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE / "assistant"))
-
-import core  # noqa: E402
-import llm   # noqa: E402
+from . import config as _cfg
+from . import core, llm
 
 MAX_LIMIT = 4000
 
@@ -108,7 +105,7 @@ def resolve(who):
 # ---------- 按发送者 ----------
 
 def _decode(rows, key):
-    import wx as _wx
+    from . import wx as _wx
     i2u = core._id2user()
     nm = core.names()
     me_ = core.me()
@@ -128,7 +125,7 @@ def _decode(rows, key):
 
 def sender_candidates(chat, name):
     """在会话里找名字匹配的发送者（先看最近的，再全表扫 rare 情况）。"""
-    import wx as _wx
+    from . import wx as _wx
     key = core._key()
     t = chat["table"]
     rows = _wx.q(core._msgdb(), f"select distinct real_sender_id from {t}", key)
@@ -146,7 +143,7 @@ def sender_candidates(chat, name):
 
 
 def fetch_by(chat, sender_ids, start=None, end=None, cap=20000):
-    import wx as _wx
+    from . import wx as _wx
     key = core._key()
     t = chat["table"]
     cond = " or ".join(f"real_sender_id={i}" for i in sender_ids)

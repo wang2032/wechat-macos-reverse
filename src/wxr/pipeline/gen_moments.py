@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 import sqlite3, re, json, html, datetime, pathlib
-HERE=pathlib.Path(__file__).resolve().parent; OUT=HERE/"export"
-SRC=HERE/"out/wxid_example_0001"
+
+from .. import config as _cfg
+
+OUT = _cfg.export_dir()
+SRC = _cfg.out_dir()/_cfg.account()
 od=sqlite3.connect(OUT/"wechat.db")
 names=dict(od.execute("select username,display from contacts"))
 cx=sqlite3.connect(SRC/"sns/sns.db"); cx.text_factory=bytes

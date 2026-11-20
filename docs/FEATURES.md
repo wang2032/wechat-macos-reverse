@@ -14,16 +14,16 @@
 | 2 | 只读查询加密库（不解出整库） | `bin/wxq` | ✅ |
 | 3 | 整库解密成明文 SQLite | `bin/wxdec` | ✅ |
 | 4 | 内存取证辅助（扫符号 / 验密钥 / 找 salt） | `tools/{scan_keys,keytest,memgrep,probe,dumpregion}.c` | ✅ |
-| 5 | 全量导出成可查询的汇总库 | `scripts/export.py` → `scripts/build_export.py` | ✅ |
-| 6 | 生成可离线浏览的聊天网页 | `scripts/gen_html.py` / `gen_moments.py` | ✅ |
-| 7 | 本地搜索服务（HTTP） | `scripts/serve.py` → `:8765` | ✅ |
-| 8 | 按「谁 + 时间 + 谁说的」查记录并 AI 总结 | `scripts/chatquery.py` | ✅ |
+| 5 | 全量导出成可查询的汇总库 | `wxr export` | ✅ |
+| 6 | 生成可离线浏览的聊天网页 | `wxr html` / `gen_moments.py` | ✅ |
+| 7 | 本地搜索服务（HTTP） | `wxr serve` → `:8765` | ✅ |
+| 8 | 按「谁 + 时间 + 谁说的」查记录并 AI 总结 | `wxr ask` | ✅ |
 | 9 | 每天「我参与过的」会话日报 | `wxdigest.py`（本地扩展） | ⬜ |
 | 10 | 增量监听新消息 + 本地通知 | `selfnotify/watch_new.py` | ⬜ |
-| 11 | 语言画像（把一个人说话方式量化 + 生成 prompt） | `scripts/persona_build.py` / `persona_gen.py` | ✅ |
+| 11 | 语言画像（把一个人说话方式量化 + 生成 prompt） | `wxr persona` / `persona_gen.py` | ✅ |
 | 12 | 用聊天记录生成「回复风格 skill」 | `assistant/make_skill.py` | ⬜ |
 | 13 | 本地 Web 助手（浏览 / 总结 / 草稿 / 自动回复） | `assistant/server.py` → `:8777` | ⬜ |
-| 14 | DSH 插件页面（左侧栏「微信记录」） | `dsh-plugin/` → `:8778` | ✅ |
+| 14 | DSH 插件页面（左侧栏「微信记录」） | `plugins/dsh/` → `:8778` | ✅ |
 | 15 | OpenClaw 工具 `wx_chat` / `wx_digest` | `plugin-wxchat/` / `plugin-wxdigest/` | ⬜ |
 | 16 | 在微信里发消息 | — | ❌ |
 | 17 | 解图片 / 语音 / 视频附件 | — | ❌ |
@@ -105,17 +105,18 @@ interposers[] __attribute__((section("__DATA,__interpose"))) __attribute__((used
 
 ## 2. 数据层
 
-### 2.1 全量导出（`scripts/export.py`）
+### 2.1 全量导出（`wxr export`）
 
 ```bash
-python3 scripts/export.py --account wxid_example_0001 --key <KEY>
+wxr init --account wxid_example_0001 --key <KEY>
+wxr export
 ```
 
 流程：`db_storage/**/*.db` + `-wal` + `-shm` 复制到 `work/<账号>/` → 逐库 `wxdec` → `out/<账号>/` → 用 `select count(*) from sqlite_master` 校验。
 
 **实测**：20 个库 0 失败，最大 `message/message_0.db` 287MB。
 
-### 2.2 汇总库（`scripts/build_export.py`）
+### 2.2 汇总库（`wxr export`）
 
 把散落的 180 张 `Msg_<md5>` 表、联系人、朋友圈汇成一个 `export/wechat.db`：
 
@@ -126,21 +127,21 @@ python3 scripts/export.py --account wxid_example_0001 --key <KEY>
 | `contacts` | `username, display, nick, remark, alias, kind` |
 | `moments` | `ts, user, name, text, images, loc` |
 
-**实测**：421,324 条消息 / 180 会话 / 8,002 联系人 / 2,338 朋友圈。
+**验证**：单账号几十万条消息、上百个会话、数千联系人，抽取与渲染均可完成（数量级随账号不同）。
 
 **坑**：`WCDB_CT_message_content=4` 时正文是 zstd 压缩（magic `28 B5 2F FD`），要用 `zstdlib.py`（ctypes 调 `libzstd`）；Python 3.14 缺 `expat` 时 `ElementTree` 会静默失败，卡片消息全变 `[卡片消息]`——用正则解析 XML 更稳。
 
-### 2.3 静态页面（`scripts/gen_html.py` / `gen_moments.py`）
+### 2.3 静态页面（`wxr html` / `gen_moments.py`）
 
 - `gen_html.py` → `export/index.html`（会话列表）+ `export/chats/*.html`（每会话一页，气泡样式，锚点 `#m<local_id>`）+ `export/chats.json`
 - `gen_moments.py` → `export/moments.html`
 
 纯静态，双击就能看，不需要服务。
 
-### 2.4 搜索服务（`scripts/serve.py`）
+### 2.4 搜索服务（`wxr serve`）
 
 ```bash
-python3 scripts/serve.py        # http://127.0.0.1:8765
+wxr serve                     # http://127.0.0.1:8765
 ```
 
 `/api/search?q=&limit=` → 走 `messages.text LIKE`，返回会话文件名 + 消息锚点，点进去直接定位。
@@ -149,14 +150,14 @@ python3 scripts/serve.py        # http://127.0.0.1:8765
 
 ## 3. 查询层
 
-### 3.1 按人 + 时间查（`scripts/chatquery.py`）
+### 3.1 按人 + 时间查（`wxr ask`）
 
 ```bash
-python3 scripts/chatquery.py --who "老婆" --days 3
-python3 scripts/chatquery.py --who 羽毛球 --from 2026-11-01 --to 2026-11-18
-python3 scripts/chatquery.py --who 老张 --yesterday --ask "他到底想约哪天"
-python3 scripts/chatquery.py --who 项目群 --by 老王            # 只看某个人说的
-python3 scripts/chatquery.py --who 老婆 --days 3 --json --no-ai  # 结构化，不调模型
+wxr ask --who "老婆" --days 3
+wxr ask --who 羽毛球 --from 2026-11-01 --to 2026-11-18
+wxr ask --who 老张 --yesterday --ask "他到底想约哪天"
+wxr ask --who 项目群 --by 老王            # 只看某个人说的
+wxr ask --who 老婆 --days 3 --json --no-ai  # 结构化，不调模型
 ```
 
 | 参数 | 含义 |
@@ -190,7 +191,7 @@ python3 selfnotify/watch_new.py --once   # 跑一次并推送新消息
 python3 selfnotify/watch_new.py          # 常驻（默认 20s 一轮）
 ```
 
-- 每个会话按 `local_id` 记水位到 `state.json`，`local_id > 水位` 走主键索引（180 会话一次 union 约 0.1s）
+- 每个会话按 `local_id` 记水位到 `state.json`，`local_id > 水位` 走主键索引（上百会话一次 union 约 0.1s）
 - 过滤：自己发的不推、`filehelper` 跳过、群聊只推命中关键词的、私聊全推
 - `daily.py`：当天消息量、活跃会话、Top 6、类型分布、**还没回的私聊**
 
@@ -198,11 +199,11 @@ python3 selfnotify/watch_new.py          # 常驻（默认 20s 一轮）
 
 ## 4. 智能层
 
-### 4.1 语言画像（`scripts/persona_build.py` / `persona_gen.py`）
+### 4.1 语言画像（`wxr persona` / `persona_gen.py`）
 
 ```bash
-python3 scripts/persona_build.py     # → persona/persona.json（全量统计）
-python3 scripts/persona_gen.py       # → PROFILE.md + system_prompt.md + fewshot.md + examples.jsonl
+wxr persona          # → data/persona/persona.json（全量统计）
+# 同一命令一并生成 PROFILE.md / fewshot.md / examples.jsonl
 ```
 
 产出四件东西：量化画像卡、可直接粘贴的 system prompt、16 组真实对话示例（8 类场景 × 2）、给模型看的「不要这样做」清单。
@@ -248,7 +249,7 @@ python3 assistant/make_skill.py      # → assistant/skill.md
 | `POST /api/send` | 发送（**未打通**，见 6） |
 | `GET/POST /api/autoreply` | 自动回复开关 |
 
-### 5.2 DSH 插件页面（`dsh-plugin/`，`:8778`）✅
+### 5.2 DSH 插件页面（`plugins/dsh/`，`:8778`）✅
 
 装到 DeepSeek Harness 后，左侧栏多一个「微信记录」图标，点开是整页：
 
@@ -259,7 +260,7 @@ python3 assistant/make_skill.py      # → assistant/skill.md
 - 读不到服务时给「三步启动」引导，不白屏
 
 ```bash
-node dsh-plugin/setup.mjs --account wxid_example_0001 --key <KEY>   # 写 ~/.dsh-wx-browser/config.json (0600)
+node plugins/dsh/setup.mjs --account wxid_example_0001 --key <KEY>   # 写 ~/.dsh-wx-browser/config.json (0600)
 dsh plugin install <tgz 或目录>                                      # 或用 DSH 的插件管理界面
 ```
 

@@ -1,0 +1,29 @@
+{
+  "id": "wx-digest",
+  "name": "WeChat Digest",
+  "description": "把某一天「我参与过的」微信群/私聊整理成日报：读本地微信库（快照+解密，不解包客户端），可选推送到企业微信。",
+  "version": "0.1.0",
+  "activation": {
+    "onStartup": true
+  },
+  "enabledByDefault": true,
+  "contracts": {
+    "tools": [
+      "wx_digest"
+    ]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "wecomWebhook": {
+        "type": "string",
+        "description": "企业微信群机器人 webhook；填了才能 push 到企业微信。"
+      },
+      "account": {
+        "type": "string",
+        "description": "微信账号目录名，默认取 wxr 配置里的账号。"
+      }
+    }
+  }
+}

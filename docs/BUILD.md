@@ -82,5 +82,5 @@ cc -O2 -o ptry tools/ptry.c            && codesign -f -s - --entitlements docs/e
 python3 -m pip install --user zstandard     # 可选；脚本里有 ctypes 直连 libzstd 的兜底
 ```
 
-`scripts/chatquery.py --ask` 需要一个大模型 API（默认 DeepSeek：`DEEPSEEK_API_KEY`），
+`wxr ask --ask` 需要一个大模型 API（默认 DeepSeek：`DEEPSEEK_API_KEY`），
 不配也能用，只是没有 AI 总结。

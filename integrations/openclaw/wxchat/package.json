@@ -1,0 +1,9 @@
+{
+  "name": "wx-chat",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "description": "Query WeChat history by contact and time range, then summarize",
+  "openclaw": { "extensions": ["./index.js"] }
+}

@@ -1,0 +1,16 @@
+{
+  "id": "wx-chat",
+  "name": "WeChat Chat Query",
+  "description": "按「和谁 + 什么时间」查本地微信聊天记录并总结：给联系人/群名和时间范围，返回要点摘要 + 原文摘录。只读本地库（快照+解密），不碰微信客户端。",
+  "version": "0.1.0",
+  "activation": { "onStartup": true },
+  "enabledByDefault": true,
+  "contracts": { "tools": ["wx_chat"] },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "account": { "type": "string", "description": "微信账号目录名，默认取 wxr 配置里的账号" }
+    }
+  }
+}

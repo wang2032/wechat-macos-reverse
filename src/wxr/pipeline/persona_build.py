@@ -2,9 +2,10 @@
 """从导出的聊天记录里抽出「我」的语言风格画像。"""
 import sqlite3, re, json, collections, statistics, datetime, pathlib, random
 
-HERE = pathlib.Path(__file__).resolve().parent
-OUT = HERE/"persona"; OUT.mkdir(exist_ok=True)
-db = sqlite3.connect(HERE/"export/wechat.db"); db.row_factory = sqlite3.Row
+from .. import config as _cfg
+
+OUT = _cfg.data_dir()/"persona"; OUT.mkdir(exist_ok=True)
+db = sqlite3.connect(f"file:{_cfg.export_db()}?mode=ro", uri=True); db.row_factory = sqlite3.Row
 
 chats = {r["username"]: dict(r) for r in db.execute("select * from chats")}
 all_msgs = list(db.execute("select chat,ts,sender_name,direction,type,text from messages order by chat,ts"))

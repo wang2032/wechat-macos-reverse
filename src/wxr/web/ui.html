@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>微信助手</title>
+<style>
+:root{
+  --bg:#0c0e11; --panel:#14171c; --panel2:#191d23; --line:#232830;
+  --ink:#e7eaee; --dim:#8b93a1; --dim2:#5f6774;
+  --green:#07c160; --green-d:#06a552; --warn:#e0a33a; --bad:#e05555;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:13px/1.5 "PingFang SC","Helvetica Neue",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input[type=checkbox]{accent-color:var(--green);width:13px;height:13px;margin:0}
+input,textarea{font:inherit;color:inherit}
+
+#app{display:grid;grid-template-rows:44px 1fr;height:100vh}
+header{display:flex;align-items:center;gap:12px;padding:0 14px;
+  border-bottom:1px solid var(--line);background:var(--panel)}
+header .brand{font-weight:600;letter-spacing:.3px}
+header .brand span{color:var(--dim2);font-weight:400;margin-left:8px;font-size:12px}
+.pills{margin-left:auto;display:flex;gap:8px}
+.pill{display:flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  background:var(--panel2);border:1px solid var(--line);font-size:11.5px;color:var(--dim)}
+.pill i{width:6px;height:6px;border-radius:50%;background:var(--dim2);display:block}
+.pill.ok i{background:var(--green)}
+.pill.bad i{background:var(--bad)}
+.pill.warn i{background:var(--warn)}
+
+main{display:grid;grid-template-columns:270px 1fr 306px;min-height:0}
+.col{min-height:0;display:flex;flex-direction:column}
+.col.left{border-right:1px solid var(--line);background:var(--panel)}
+.col.right{border-left:1px solid var(--line);background:var(--panel)}
+
+.search{padding:9px}
+.search input{width:100%;padding:6px 10px;border-radius:7px;border:1px solid var(--line);
+  background:var(--panel2);outline:none}
+.search input:focus{border-color:#39414d}
+#chats{overflow-y:auto;flex:1;padding-bottom:8px}
+.chat{display:grid;grid-template-columns:34px 1fr auto;gap:9px;padding:8px 11px;cursor:pointer;
+  border-left:2px solid transparent}
+.chat:hover{background:var(--panel2)}
+.chat.on{background:#1c222a;border-left-color:var(--green)}
+.av{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;
+  background:#2a3038;color:#cfd6df;font-size:13px;font-weight:600}
+.chat.on .av{background:#2b3a34;color:#9be8bd}
+.c-main{min-width:0}
+.c-name{display:flex;gap:6px;align-items:center;font-size:13px}
+.c-name b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font-size:10px;color:var(--dim2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.c-sub{color:var(--dim2);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c-time{color:var(--dim2);font-size:11px;align-self:start;padding-top:2px}
+.badge{background:var(--bad);color:#fff;font-size:10.5px;border-radius:9px;padding:0 5px;min-width:16px;text-align:center}
+
+#thread{overflow-y:auto;flex:1;padding:16px 20px 8px;display:flex;flex-direction:column;gap:2px}
+#thread>:first-child{margin-top:auto}
+.day{align-self:center;margin:14px 0 8px;color:var(--dim2);font-size:11px}
+.msg{display:flex;gap:8px;margin:2px 0;max-width:76%}
+.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.msg .who{display:flex;flex-direction:column;align-items:center;gap:3px}
+.msg .who small{color:var(--dim2);font-size:10px;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bub{padding:7px 11px;border-radius:9px;background:var(--panel2);white-space:pre-wrap;word-break:break-word}
+.msg.me .bub{background:#12352a;color:#dff5e8}
+.msg.me .t{order:-1;margin-right:2px}
+.msg .t{color:var(--dim2);font-size:10.5px;align-self:flex-end;margin-bottom:2px}
+.empty{color:var(--dim2);text-align:center;margin-top:60px;line-height:1.9}
+
+#composer{border-top:1px solid var(--line);background:var(--panel);padding:9px 12px 11px}
+#composer textarea{width:100%;height:64px;resize:none;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel2);padding:8px 10px;outline:none}
+#composer textarea:focus{border-color:#39414d}
+.row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.btn{padding:5px 12px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);color:var(--ink)}
+.btn:hover{border-color:#39414d}
+.btn.primary{background:var(--green);border-color:var(--green);color:#04120b;font-weight:600}
+.btn.primary:hover{background:var(--green-d)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.hint{color:var(--dim2);font-size:11.5px;margin-left:auto}
+
+.col.right{padding:0}
+.panel-h{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.panel-h b{font-size:12px;font-weight:600;letter-spacing:.4px;color:var(--dim)}
+.panel-b{padding:10px 12px;overflow-y:auto;flex:1}
+.sec{margin-bottom:14px}
+.sec h4{margin:0 0 6px;font-size:11px;letter-spacing:.6px;color:var(--dim2);font-weight:600;text-transform:uppercase}
+.out{white-space:pre-wrap;font-size:12.5px;color:#c9d1dc;background:var(--panel2);
+  border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:44px}
+.sug{display:flex;flex-direction:column;gap:6px}
+.sug button{text-align:left;background:var(--panel2);border:1px solid var(--line);
+  border-radius:8px;padding:7px 10px}
+.sug button:hover{border-color:var(--green);color:#b8f2d2}
+.legend{color:var(--dim2);font-size:11.5px;line-height:1.7}
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:#20262e;border:1px solid var(--line);padding:8px 14px;border-radius:8px;
+  opacity:0;transition:.2s;pointer-events:none;max-width:70vw}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">微信助手 <span id="acct"></span></div>
+    <div class="pills">
+      <div class="pill" id="p-wx"><i></i>微信</div>
+      <div class="pill" id="p-ax"><i></i>发送授权</div>
+      <div class="pill" id="p-llm"><i></i>模型</div>
+    </div>
+  </header>
+
+  <main>
+    <section class="col left">
+      <div class="search"><input id="q" placeholder="搜索会话"></div>
+      <div id="chats"></div>
+    </section>
+
+    <section class="col">
+      <div id="thread"><div class="empty">左边选一个会话</div></div>
+      <div id="composer" hidden>
+        <textarea id="text" placeholder="写点什么…（⌘↩ 发送 / ⇧↩ 换行）"></textarea>
+        <div class="row">
+          <button class="btn primary" id="send">发送</button>
+          <button class="btn" id="draft">草稿（不发出）</button>
+          <span class="hint" id="sendhint"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="col right">
+      <div class="panel-h"><b>助手</b></div>
+      <div class="panel-b">
+        <div class="sec">
+          <h4>这个会话</h4>
+          <div class="out" id="panel-sum">选中会话后可总结。</div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn" id="sum">总结</button>
+            <button class="btn" id="sumai">模型总结</button>
+          </div>
+        </div>
+        <div class="sec">
+          <h4>自动回复</h4>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:7px">
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+              <input type="checkbox" id="ar-global"> 总开关
+            </label>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer" id="ar-chat-row">
+              <input type="checkbox" id="ar-chat" disabled> 只对这个会话自动回
+            </label>
+          </div>
+          <div class="legend" id="ar-note">关着就只给建议，不自己发。</div>
+        </div>
+        <div class="sec">
+          <h4>可以这么回</h4>
+          <div class="sug" id="sug"><span class="legend">点「建议」按对方最后一句话生成。</span></div>
+          <div class="row" style="margin-top:8px"><button class="btn" id="getsug">建议</button></div>
+        </div>
+        <div class="sec">
+          <h4>说明</h4>
+          <div class="legend">
+            收消息：读本地库快照，2 秒轮询，不碰客户端。<br>
+            发消息：模拟按键，需要辅助功能授权。<br>
+            读和发都只在这台机器上完成；只有你自己配的模型会读到聊天内容。
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+
+// ---- 预览模式：直接用 file:// 打开时用假数据，方便看排版 ----
+const DEMO = {
+  status: {account:"wxid_demo", me:"wxid_demo", trusted:true, wechat_pid:1234,
+           model:{configured:true, ok:true, model:"minimax-m2.7-for-cc"}},
+  chats: [
+    {username:"g1", name:"球搭子💕", kind:"group", last_ts:1794996178, unread:13, summary:"\"白杨\" 拍了拍 \"会游泳的鱼\""},
+    {username:"p1", name:"老婆", kind:"person", last_ts:1794995400, unread:2, summary:"晚上吃什么"},
+    {username:"p2", name:"黄彦琦", kind:"person", last_ts:1794993000, unread:0, summary:"[图片]"},
+    {username:"p3", name:"小李", kind:"person", last_ts:1794989000, unread:1, summary:"这个参数是干嘛的"},
+    {username:"g2", name:"周末羽毛球群", kind:"group", last_ts:1794985000, unread:12, summary:"那明天下午还打吗"}
+  ],
+  msgs: [
+    {id:1, ts:1794989000, type:"文本", from:"小李", mine:false, text:"这个参数是干嘛的？能不能加个默认值"},
+    {id:2, ts:1794989300, type:"文本", from:"me", mine:true, text:"我看看"},
+    {id:3, ts:1794995000, type:"文本", from:"老婆", mine:false, text:"晚上吃什么"},
+    {id:4, ts:1794995100, type:"文本", from:"me", mine:true, text:"都可以 你定"},
+    {id:5, ts:1794995200, type:"文本", from:"老婆", mine:false, text:"那吃火锅吧"},
+    {id:6, ts:1794995300, type:"表情", from:"me", mine:true, text:""},
+    {id:7, ts:1794995400, type:"文本", from:"me", mine:true, text:"好 我去占座"}
+  ]
+};
+
+const $ = s => document.querySelector(s);
+const state = { chats: [], chat: null, msgs: [], status: null, timer: null };
+const esc = s => (s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const hhmm = ts => { const d = new Date(ts*1000); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); };
+const dayOf = ts => { const d = new Date(ts*1000); return `${d.getMonth()+1}月${d.getDate()}日`; };
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); setTimeout(()=>el.classList.remove("on"), 2600); }
+async function api(p, opt){ const r = await fetch(p, opt); return await r.json(); }
+
+function setStatus(s){
+  state.status = s;
+  $("#acct").textContent = s.me || "";
+  const wx = $("#p-wx"); wx.className = "pill " + (s.wechat_pid ? "ok" : "bad");
+  wx.innerHTML = `<i></i>微信 ${s.wechat_pid ? "在线" : "未运行"}`;
+  const ax = $("#p-ax"); ax.className = "pill " + (s.trusted ? "ok" : "warn");
+  ax.innerHTML = `<i></i>发送授权 ${s.trusted ? "已授权" : "待授权"}`;
+  const m = s.model || {}; const llm = $("#p-llm");
+  llm.className = "pill " + (m.configured && m.ok ? "ok" : m.configured ? "warn" : "bad");
+  llm.innerHTML = `<i></i>模型 ${m.configured ? (m.model || "已配置") : "未配置"}`;
+  $("#sendhint").textContent = s.trusted ? "" : "需要辅助功能授权后才能真发";
+  $("#send").disabled = !s.trusted;
+}
+
+function renderChats(){
+  const kw = $("#q").value.trim().toLowerCase();
+  const list = state.chats.filter(c => !kw || c.name.toLowerCase().includes(kw));
+  $("#chats").innerHTML = list.map(c => `
+    <div class="chat ${state.chat===c.username?"on":""}" data-u="${esc(c.username)}">
+      <div class="av">${esc((c.name||"?").slice(0,1))}</div>
+      <div class="c-main">
+        <div class="c-name"><b>${esc(c.name)}</b>${c.kind==="group"?'<span class="tag">群</span>':""}</div>
+        <div class="c-sub">${esc(c.summary || (c.kind==="group"?"群聊":"私聊"))}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="c-time">${c.last_ts?hhmm(c.last_ts):""}</span>
+        ${c.unread?`<span class="badge">${c.unread>99?"99+":c.unread}</span>`:""}
+      </div>
+    </div>`).join("") || '<div class="legend" style="padding:14px">没有匹配的会话</div>';
+  document.querySelectorAll(".chat").forEach(el => el.onclick = () => openChat(el.dataset.u));
+}
+
+function bubble(m, isGroup){
+  const side = m.mine ? "me" : "";
+  const t = m.text || (m.type && m.type !== "文本" ? "["+m.type+"]" : "");
+  const who = m.mine ? "" : `<div class="who"><div class="av" style="width:26px;height:26px;font-size:11px">${esc((m.from||"?").slice(0,1))}</div>${isGroup?`<small>${esc(m.from)}</small>`:""}</div>`;
+  return `<div class="msg ${side}">${who}<div class="bub">${esc(t)}</div><span class="t">${hhmm(m.ts)}</span></div>`;
+}
+
+function renderThread(){
+  const el = $("#thread");
+  if (!state.chat){ el.innerHTML = '<div class="empty">左边选一个会话</div>'; return; }
+  const c = state.chats.find(x => x.username === state.chat) || {};
+  const isGroup = c.kind === "group";
+  let html = "", lastTs = 0;
+  for (const m of state.msgs){
+    if (m.ts - lastTs > 300) html += `<div class="day">${dayOf(m.ts)} ${hhmm(m.ts)}</div>`;
+    lastTs = m.ts;
+    html += bubble(m, isGroup);
+  }
+  el.innerHTML = html || '<div class="empty">这个会话还没有可读消息</div>';
+  el.scrollTop = el.scrollHeight;
+}
+
+async function loadChats(){
+  const d = await api("/api/chats");
+  state.chats = d.chats || [];
+  renderChats();
+}
+async function loadMessages(append){
+  if (!state.chat) return;
+  const after = append && state.msgs.length ? state.msgs[state.msgs.length-1].ts : null;
+  const qs = `/api/messages?chat=${encodeURIComponent(state.chat)}&limit=80` + (after?`&after=${after}`:"");
+  const d = await api(qs);
+  const fresh = d.messages || [];
+  if (append && after) state.msgs = state.msgs.concat(fresh);
+  else state.msgs = fresh;
+  if (fresh.length || !append) renderThread();
+}
+function openChat(u){
+  state.chat = u; state.msgs = [];
+  renderChats();
+  $("#composer").hidden = false;
+  $("#text").value = "";
+  $("#panel-sum").textContent = "点「总结」看这个会话。";
+  $("#sug").innerHTML = '<span class="legend">点「建议」按对方最后一句话生成。</span>';
+  loadMessages(false).then(()=>{ const t=$("#text"); t.focus(); });
+  loadAr();
+}
+
+
+let arOn = false;
+function arNote(a){
+  const el = $("#ar-note");
+  $("#ar-global").checked = !!a.enabled;
+  $("#ar-chat").checked = !!a.enabled && !!a.chats && !!a.chats[state.chat];
+  $("#ar-chat").disabled = !a.enabled;
+  if (!a.enabled) el.textContent = "关着就只给建议，不自己发。";
+  else if (a.dry_run) el.textContent = "已开启，但只写日志不发（dry run）。";
+  else if (!a.trusted) el.textContent = "已开启，但发送授权没给，只会写日志。";
+  else el.textContent = "已开启：对方发来会自动回一句，最多每小时 " + (a.max_per_hour||12) + " 条。";
+}
+async function loadAr(){
+  if (location.protocol === "file:") { arNote({enabled:false}); return; }
+  try { arNote(await api("/api/autoreply")); } catch(e){}
+}
+$("#ar-global").onchange = async e => {
+  const r = await api("/api/autoreply", {method:"POST",headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({enabled: e.target.checked})});
+  arNote({...r, trusted: state.status && state.status.trusted});
+  toast(e.target.checked ? "自动回复已开启" : "自动回复已关闭");
+};
+$("#ar-chat").onchange = async e => {
+  if (!state.chat) return;
+  const r = await api("/api/autoreply", {method:"POST",headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({chat: state.chat, on: e.target.checked})});
+  arNote({...r, trusted: state.status && state.status.trusted});
+  toast(e.target.checked ? "这个会话开始自动回" : "这个会话不再自动回");
+};
+
+$("#q").oninput = renderChats;
+$("#send").onclick = async () => {
+  const text = $("#text").value.trim(); if (!text || !state.chat) return;
+  $("#send").disabled = true;
+  const r = await api("/api/send", {method:"POST",headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({chat: state.chat, text})});
+  $("#send").disabled = false;
+  if (r.ok){ $("#text").value=""; toast("已发送 → " + r.target); setTimeout(()=>loadMessages(true), 900); }
+  else toast("发送失败：" + (r.err || r.code));
+};
+$("#draft").onclick = async () => {
+  const text = $("#text").value.trim(); if (!text || !state.chat) return;
+  const r = await api("/api/send", {method:"POST",headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({chat: state.chat, text, dry:true})});
+  toast(r.ok ? "已把会话打开并对齐草稿位：" + r.target : "失败：" + (r.err||r.code));
+};
+$("#sum").onclick = async () => {
+  if (!state.chat) return;
+  $("#panel-sum").textContent = "…";
+  const r = await api(`/api/summary?chat=${encodeURIComponent(state.chat)}&days=2`);
+  $("#panel-sum").textContent = r.text || "没有内容";
+};
+$("#sumai").onclick = async () => {
+  if (!state.chat) return;
+  $("#panel-sum").textContent = "…";
+  const r = await api(`/api/summary?chat=${encodeURIComponent(state.chat)}&days=2&ai=1`);
+  $("#panel-sum").textContent = r.text || "没有内容";
+};
+$("#getsug").onclick = async () => {
+  if (!state.chat) return;
+  $("#sug").innerHTML = '<span class="legend">生成中…</span>';
+  const r = await api(`/api/suggest?chat=${encodeURIComponent(state.chat)}`);
+  const arr = r.suggestions || [];
+  $("#sug").innerHTML = arr.map(s => `<button>${esc(s)}</button>`).join("") || '<span class="legend">没有建议</span>';
+  document.querySelectorAll("#sug button").forEach(b => b.onclick = () => { $("#text").value = b.textContent; $("#text").focus(); });
+};
+$("#text").addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)){ e.preventDefault(); $("#send").click(); }
+});
+
+(async function boot(){
+  if (location.protocol === "file:"){
+    setStatus(DEMO.status); state.chats = DEMO.chats; renderChats();
+    state.chat = "p1"; state.msgs = DEMO.msgs; renderChats(); renderThread();
+    $("#composer").hidden = false;
+    $("#panel-sum").textContent = "近 2 天 6 条：\n\n· 发言：我 3，对方 3\n· 类型：文本 4，表情 1\n\n等你回复：那吃火锅吧";
+    $("#sug").innerHTML = ["好 我去占座","吃啥都行","马上到"].map(x=>`<button>${x}</button>`).join("");
+    const b=document.createElement("div");
+    b.textContent="预览模式（假数据）"; b.style.cssText="position:fixed;top:8px;left:50%;transform:translateX(-50%);background:#3a2f18;color:#e0c07a;padding:3px 10px;border-radius:6px;font-size:11px;z-index:9";
+    document.body.appendChild(b);
+    return;
+  }
+  setStatus(await api("/api/status"));
+  await loadChats();
+  loadAr();
+  setInterval(()=>{ api("/api/status").then(setStatus); loadChats(); }, 8000);
+  setInterval(()=>{ if (state.chat) loadMessages(true); }, 2000);
+})();
+</script>
+</body>
+</html>

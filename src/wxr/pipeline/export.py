@@ -2,14 +2,16 @@
 """WeChat 4.2 macOS DB exporter: copy db+wal, decrypt via wxdec (sqlite3_key), verify."""
 import json, os, shutil, subprocess, sys, pathlib
 
-BASE = pathlib.Path.home()/"Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files"
-HERE = pathlib.Path(__file__).resolve().parent
-WXDEC = HERE/"wxdec"
+from .. import config as _cfg
+
+BASE = _cfg.WECHAT_FILES
+HERE = _cfg.ROOT
+WXDEC = _cfg.tool("wxdec")
 
 def main():
-    acct = json.load(open(HERE/"account_key.json"))
+    acct = {"account": _cfg.account(), "key": _cfg.key()}
     src = BASE/acct["account"]/"db_storage"
-    work = HERE/"work"/acct["account"]; out = HERE/"out"/acct["account"]
+    work = _cfg.work_dir()/acct["account"]; out = _cfg.out_dir()/acct["account"]
     work.mkdir(parents=True, exist_ok=True); out.mkdir(parents=True, exist_ok=True)
     dbs = sorted(p for p in src.rglob("*.db"))
     print(f"account={acct['account']} dbs={len(dbs)}")

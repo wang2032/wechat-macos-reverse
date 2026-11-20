@@ -1,0 +1,13 @@
+{
+  "name": "wx-digest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "description": "WeChat daily digest tool for OpenClaw",
+  "openclaw": {
+    "extensions": [
+      "./index.js"
+    ]
+  }
+}

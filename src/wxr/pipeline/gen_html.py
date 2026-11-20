@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Generate static HTML transcripts from export/wechat.db."""
 import sqlite3, html, re, json, pathlib, datetime, hashlib
-HERE = pathlib.Path(__file__).resolve().parent
-OUT = HERE/"export"; CH = OUT/"chats"; CH.mkdir(exist_ok=True)
+
+from .. import config as _cfg
+
+OUT = _cfg.export_dir(); CH = OUT/"chats"; CH.mkdir(exist_ok=True)
 db = sqlite3.connect(OUT/"wechat.db"); db.row_factory = sqlite3.Row
 
 CSS = """

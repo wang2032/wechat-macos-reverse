@@ -2,7 +2,9 @@
 """本地查看器：静态聊天记录 + 全局搜索。 用法: python3 serve.py [port]"""
 import json, sqlite3, sys, urllib.parse, datetime, pathlib
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-OUT = pathlib.Path(__file__).resolve().parent/"export"
+from .. import config as _cfg
+
+OUT = _cfg.export_dir()
 PORT = int(sys.argv[1]) if len(sys.argv)>1 else 8765
 MAP = json.load(open(OUT/"chats.json"))
 

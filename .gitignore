@@ -19,11 +19,16 @@ account_key.json
 keys.json
 keys_hook.json
 config.json
-!dsh-plugin/package.json
+!plugins/dsh/package.json
 *entitlements.wx.plist
 
 # 构建产物
 bin/
+build/
+dist/
+.pytest_cache/
+.venv/
+*.egg-info/
 *.dylib
 *.app/
 node_modules/

@@ -1,0 +1,5 @@
+#!/bin/sh
+# 免安装启动器：./wxr <命令>，等价于 PYTHONPATH=src python3 -m wxr.cli <命令>
+set -e
+HERE=$(cd "$(dirname "$0")" && pwd)
+exec env PYTHONPATH="$HERE/src${PYTHONPATH:+:$PYTHONPATH}" python3 -m wxr.cli "$@"

@@ -1,179 +1,178 @@
-# 微信 macOS 4.2 本地数据逆向工具集
+# wechat-macos-reverse
 
-在 **macOS + 微信 4.2.0（arm64）** 上，把本地 `db_storage/` 里加密的聊天记录解开，变成可查询、可导出的数据。包含：抓密钥的注入库、只读查询/解密工具、导出脚本、以及一个 DeepSeek Harness 插件页面。
+**把本机微信 4.x 的聊天记录变成你能查询、能统计、能画页面的数据。**
 
-> 目标版本：WeChat for macOS **4.2.0**（`com.tencent.winWeChat`，Developer ID `5A4RE8SF68`）
+纯本地、只读、离线：不联网、不发消息、不改微信数据。解密后的库和汇总库都在你自己机器上。
 
-## 从这里开始
-
-| 想看什么 | 去哪 |
-|---|---|
-| **都有哪些功能、每个怎么调、坑在哪** | [**`docs/FEATURES.md`**](docs/FEATURES.md) |
-| **照着做一遍（拿密钥 → 查 → 导 → 日报 → DSH 页面）** | [**`docs/USAGE.md`**](docs/USAGE.md) |
-| 加密参数、密钥语义、库表结构、发送侧现状 | [`docs/REVERSE_ENGINEERING.md`](docs/REVERSE_ENGINEERING.md) |
-| 编译每个工具 | [`docs/BUILD.md`](docs/BUILD.md) |
-| 库被 `.factory` 化 / 换钥后怎么救 | [`docs/RECOVERY.md`](docs/RECOVERY.md) |
+> 这是给自己账号做的数据工具，不是「微信客户端逆向破解」教程。只处理**你自己的**设备与账号。
 
 ---
 
-## ⚠️ 先读这一段
+## 它能做什么
 
-- 这套东西**只对你自己这台机器、你自己登录的账号**有意义。不要拿去读别人的设备。
-- 仓库里**不含任何真实密钥、账号 wxid 或聊天内容**，占位符（`<ACCOUNT_KEY>`、`wxid_example_0001`）都要你用自己的替换。
-- 解密出来的是最私密的数据，**不要提交进 git、不要上传网盘**。`.gitignore` 已经挡掉了常见数据目录，但请自己再看一眼。
-- 本仓库**不含发送能力**。原因见 [`docs/REVERSE_ENGINEERING.md`](docs/REVERSE_ENGINEERING.md) §8：个人微信没有官方发送接口，三条路线（辅助功能注入 / 内存打补丁 / 进程内事件投递）实测全部撞墙。要做自动化发消息，走企业微信自建应用或公众号，别碰协议。
-
----
-
-## 能力边界
-
-| 能力 | 状态 | 说明 |
+| 能力 | 状态 | 入口 |
 |---|---|---|
-| 抓账号主密钥 | ✅ | 自签副本 + `__interpose` 拦 `CCKeyDerivationPBKDF` |
-| 解密 `db_storage/*.db` | ✅ | SQLCipher4：AES-256-CBC / PBKDF2-HMAC-SHA512 256000 / page 4096 |
-| 消息 / 会话 / 联系人 / 朋友圈 | ✅ | 实测单账号 42 万条消息、180 会话、8000 联系人、2300 朋友圈 |
-| 增量监听新消息 | ✅ | APFS clone 快照 + 只读查询，不锁库、不写微信目录 |
-| 在客户端里发消息 | ❌ | 见 §8 |
-| Windows / 手机端 | ❌ | 参数与布局完全不同，没做 |
+| 抓账号主密钥（每账号一次） | ✅ | `make tools` + `wxhook.dylib` |
+| 解密 `db_storage/*.db` | ✅ | `wxr export` |
+| 按「谁 + 时间 + 谁说的」查记录并总结 | ✅ | `wxr ask` |
+| 全量汇总成单文件 SQLite | ✅ | `wxr export`（含 `build`） |
+| 可离线浏览的聊天网页 / 朋友圈页 | ✅ | `wxr html` |
+| 本地 HTTP 服务 + 三栏界面 | ✅ | `wxr web` |
+| 某天「我参与过」的日报 | ✅ | `wxr digest` |
+| 增量监听新消息 | ✅ | `wxr watch` |
+| 语言画像（说话风格量化） | ✅ | `wxr persona` |
+| 回复风格 skill（喂给模型） | ✅ | `wxr skill` |
+| DSH 插件：左侧栏一页浏览 | ✅ | [`plugins/dsh`](plugins/dsh) |
+| OpenClaw 工具 `wx_chat` / `wx_digest` | ✅ | [`integrations/openclaw`](integrations/openclaw) |
+| 在微信里替人发消息 | ❌ | 见 §发送侧 |
+| 解图片 / 语音 / 视频附件 | ❌ | 加密格式未破 |
+
+功能细节与逐条用法：[`docs/FEATURES.md`](docs/FEATURES.md)、[`docs/USAGE.md`](docs/USAGE.md)。
 
 ---
 
-## 工作链路
+## 安装
 
-```
-                 ┌──────────────────────────────┐
-  WeChat.app ──▶ │ wxhook.dylib（__DATA,__interpose）│ ──▶ pw + salt（KDF 入参）
-                 └──────────────────────────────┘
-                              │
-                              ▼
-              wxq / wxdec ──▶ SQLCipher 解密 ──▶ 明文 SQLite
-                              │
-              ┌───────────────┼────────────────┐
-              ▼               ▼                ▼
-        chatquery.py     export.py      dsh-plugin（网页）
-        按人/按时间查     全量导出        DSH 左侧栏一页
+```bash
+git clone https://github.com/wang2032/wechat-macos-reverse.git
+cd wechat-macos-reverse
+
+make tools                 # 编译 wxq / wxdec / wxsql / wxhook.dylib 到 build/
+./wxr --help               # 免安装启动器（等价 PYTHONPATH=src python3 -m wxr.cli）
+
+# 可选：装成全局命令
+python3 -m pip install -e .
 ```
 
-关键点：微信在**运行时**用 `sqlite3_key(db, key, 32)` 把 32 字节主密钥交给 SQLCipher，这个 key 是**账号级**的（同账号所有库共用，每库各有自己的 16 字节 salt），不落盘、不走 `x'<key><salt>'` 字符串。所以必须从 `CCKeyDerivationPBKDF` 的入参里拿。
+> 没装成功也不影响用：`./wxr` 是个 sh 包装，只依赖 Python 3 标准库。
+
+编译需要 `brew install sqlcipher openssl@3`（只在编译期用；`wxq`/`wxdec` 静态链接，产物可单独拷走）。
+运行时只需要 Python 3 标准库 + macOS 自带的 `libzstd`。
 
 ---
 
-## 快速开始
+## 三步上手
 
-### 1. 编工具
-
-```bash
-# 静态链接版（不需要装 sqlcipher，产物体积 5.5MB）
-brew install sqlcipher openssl@3      # 只在编译时需要
-cc -O2 -o bin/wxq tools/wxq.c \
-   "$(brew --prefix sqlcipher)/lib/libsqlcipher.a" \
-   "$(brew --prefix openssl@3)/lib/libcrypto.a" \
-   -framework Security -framework CoreFoundation -lz
-
-# 或者动态链接（本机装了 sqlcipher 即可）
-cc -O2 -I"$(brew --prefix sqlcipher)/include" -o wxq tools/wxq.c \
-   -L"$(brew --prefix sqlcipher)/lib" -lsqlcipher
-```
-
-完整编译说明见 [`docs/BUILD.md`](docs/BUILD.md)。
-
-### 2. 抓密钥（一次性，每账号一次）
+### 1. 拿密钥
 
 ```bash
-# 复制一份微信、加两个 entitlement 后 ad-hoc 重签
 cp -cR /Applications/WeChat.app ./WeChatHook.app
-codesign -f -s - --entitlements entitlements.plist WeChatHook.app/Contents/MacOS/WeChat
+# entitlements = 原版 + disable-library-validation + allow-dyld-environment-variables
+codesign -f -s - --entitlements docs/entitlements.wx.plist ./WeChatHook.app/Contents/MacOS/WeChat
 
-# 编译注入库（必须 arm64e，与主程序架构一致）
-cc -O2 -dynamiclib -arch arm64e -o wxhook.dylib tools/wxhook_dylib.c -framework CoreFoundation
-codesign -f -s - wxhook.dylib
-
-# 带着 dylib 启动，登录目标账号，日志里就出现 pw（32 字节 hex）
-DYLD_INSERT_LIBRARIES=$PWD/wxhook.dylib ./WeChatHook.app/Contents/MacOS/WeChat
+DYLD_INSERT_LIBRARIES=$PWD/build/wxhook.dylib ./WeChatHook.app/Contents/MacOS/WeChat
 ```
 
-`entitlements.plist` = 微信原有 entitlements + `com.apple.security.cs.disable-library-validation` + `com.apple.security.cs.allow-dyld-environment-variables`，重签时**不要加** `--options runtime`。
-
-日志里 `rounds=256000` 的那条就是 SQLCipher 口令：
+登录目标账号，日志里 `rounds=256000` 那条的 `pw` 就是主密钥：
 
 ```
-PBKDF2 alg=2 pwlen=32 saltlen=16 prf=5 rounds=256000 caller=0x... pw=<64位hex> salt=<32位hex> dk=...
+PBKDF2 alg=2 pwlen=32 saltlen=16 prf=5 rounds=256000 pw=<64 位 hex> salt=<32 位 hex>
 ```
 
-写进配置：`./scripts/setup_key.sh <account> <key>`，或手动放进 `~/.wxre/config.json`。
+细节与失败情形见 [`docs/USAGE.md`](docs/USAGE.md) 第一节（含 `-arch arm64e`、SIP、ad-hoc 重签的坑）。
 
-### 3. 查
+### 2. 写配置
 
 ```bash
-./bin/wxq ~/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/wxid_xxx/db_storage/message/message_0.db <KEY> \
-  "select count(*) from sqlite_master where name like 'Msg_%'"
+wxr init --account wxid_example_0001 --key <64 位 hex>   # 写 ~/.config/wxr/config.json (0600)
+wxr status                                               # 体检：账号/密钥/工具/汇总库
 ```
 
-`wxq` 是**只读**的：`SQLITE_OPEN_READONLY` + 只允许 `select` 开头的语句，写操作直接返回 `readonly: only SELECT is allowed`。建议永远在 `cp -c` 克隆上跑，别碰正在写的原库。
+密钥也可以只放环境变量 `WXR_DB_KEY`，不落盘。
 
-### 4. 导出 / 页面
+### 3. 用
 
 ```bash
-python3 scripts/export.py            # 全部库 → out/<account>/
-python3 scripts/build_export.py      # → export/wechat.db（messages/chats/contacts/moments 四表）
-python3 scripts/gen_html.py          # → export/index.html + chats/*.html
-python3 scripts/chatquery.py --who 老婆 --days 3 --ask "最近在说什么"
+wxr chats                                   # 会话列表（按最后消息时间）
+wxr messages --chat 老婆 --limit 30         # 最近 30 条
+wxr ask --who 羽毛球 --yesterday --ask "最后定了几点"
+wxr search -q 分镜 --limit 20               # 全局搜索
+wxr digest --date 2026-11-19                # 当天我参与过的会话日报
+wxr export                                  # 全量导出 + 汇总库 export/wechat.db
+wxr html                                    # 静态页面 export/index.html
+wxr persona --viz                           # 语言画像 + 可视化页
+wxr web                                     # 本地界面 http://127.0.0.1:8777
 ```
-
-DSH 插件页面见 [`dsh-plugin/`](dsh-plugin/)：左侧栏一页，会话/搜索/发送者筛选/AI 总结。
 
 ---
 
-## 工具清单
+## 工作原理
 
-| 文件 | 作用 |
-|---|---|
-| `tools/wxhook_dylib.c` | interpose `CCKeyDerivationPBKDF`，把 KDF 入参写日志（**抓钥核心**） |
-| `tools/wxq.c` | 只读 SQLCipher 查询，输出 TSV，BLOB 走 `0x<hex>` |
-| `tools/wxdec.c` | 库 → 明文库（`ATTACH … KEY ''` + `sqlcipher_export`） |
-| `tools/wxsql.c` | 最小示例：`sqlite3_key(db, key, 32)` + prepare |
-| `tools/scan_keys.c` | 老版本（4.0.x）用的内存扫 `x'<key><salt>'`，4.2 已失效，留作对照 |
-| `tools/keytest.c` | 对任意内存区滑动窗口试 32 字节 key，用 page-1 HMAC 校验 |
-| `tools/memgrep.c` / `probe.c` / `dumpregion.c` | 内存搜索 / 找 `x'` 模式 / dump 区间 |
-| `tools/ptry.c` | 自签 + `ptrace(PT_ATTACH)` 的最小验证（SIP 关闭时不需要 root） |
-| `scripts/export.py` | 批量解密 `db_storage` |
-| `scripts/build_export.py` | 汇总成单文件 `wechat.db` |
-| `scripts/chatquery.py` | 按人 / 时间 / 发送者查记录，可选 AI 总结 |
-| `scripts/persona_build.py` | 从聊天记录算说话风格统计（语言画像） |
-| `scripts/gen_html.py` / `gen_moments.py` / `serve.py` | 静态页面与本地搜索服务 |
-| `dsh-plugin/` | DeepSeek Harness 插件：`server.mjs` + `client.js` 一页浏览 |
+```
+db_storage/*.db (SQLCipher)
+   │  cp -c 克隆（毫秒级，不动原文件）
+   ▼
+ /tmp 下的副本
+   │  wxq <db> <key> "select …"（READONLY + 只允许 SELECT）
+   ▼
+ TSV → zstd 解压 → XML 抽文本 → Name2Id 映射发送者
+   │
+   ├─ wxr ask / digest / watch     查询与日报
+   ├─ export/wechat.db             汇总库（四张表）
+   └─ web / DSH 插件 / 静态页面     界面
+```
+
+微信在运行时用 `sqlite3_key(db, key, 32)` 把 **32 字节账号级主密钥**交给 SQLCipher：同账号所有库共用一把 key，每个库各有自己的 16 字节 salt；key 不落盘，也不以 `x'<key><salt>'` 字符串形式存在（4.0.x 才是那样）。
+所以正确做法是从 `CCKeyDerivationPBKDF` 的入参里截获它。原理与参数在 [`docs/REVERSE_ENGINEERING.md`](docs/REVERSE_ENGINEERING.md)。
 
 ---
 
-## 数据结构速览
+## 项目结构
 
-详细版在 [`docs/REVERSE_ENGINEERING.md`](docs/REVERSE_ENGINEERING.md)。
+```
+src/wxr/            Python 包（config / wx / core / llm / 各能力模块 / web / pipeline）
+tools/              C 工具：wxq（只读查询）、wxdec（解密）、wxhook（抓钥）、取证辅助
+plugins/dsh/        DeepSeek Harness 插件：侧栏「微信记录」整页 + 本地 8778 服务
+integrations/openclaw/  OpenClaw 工具：wx_chat、wx_digest
+tests/              冒烟测试（不需要微信、不需要密钥）
+docs/               ARCHITECTURE / FEATURES / USAGE / BUILD / REVERSE_ENGINEERING / RECOVERY
+```
 
-- `message/message_0.db`：消息主体。每个会话一张 `Msg_<md5(username)>` 表，`Name2Id(rowid ↔ user_name)` 映射发送者。
-- `message_content` 列：`WCDB_CT_message_content = 4` 时是 **zstd**（magic `28 B5 2F FD`），`0` 是明文。消息体形如 `<sender_wxid>:\n<body>`，body 多为 XML（appmsg/img/voicemsg/emoji/location）。
-- `local_type`：1 文本、3 图片、34 语音、43 视频、47 表情、48 位置、50 通话、10000 系统。应用消息是高位变体，判据是 `(local_type & 0xFFFFFFFF) == 49`。
-- `session/session.db` 的 `SessionTable` 给会话列表与摘要；`contact/contact.db` 给备注/昵称；`sns/sns.db` 的朋友圈在 `SnsTimeLine`。
+分层与扩展方式见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)：
+**基础层（wx）→ 语义层（core）→ 能力层 → 入口层（CLI / 页面 / 插件）**，依赖单向。
+加一个新命令 = 写一个模块 + 在 `cli.py` 注册 + 一条测试。
+
+---
+
+## 发送侧：为什么是 ❌
+
+个人微信没有官方发送接口。三条路都试过并记录在 [`docs/REVERSE_ENGINEERING.md`](docs/REVERSE_ENGINEERING.md)：
+
+1. **辅助功能（AX）+ 模拟按键** —— 需要用户授「辅助功能」权限，还得让微信在前台抢焦点。
+2. **注入 dylib 往自己的事件队列投递 NSEvent / CGEvent** —— 微信 4.2 的会话界面是 Qt（`QNSWindow`/`QNSView`）自绘的，五种投递方式全部返回成功但消息没进库。
+3. **协议层命令**（`sendmsg`=2 / `newsendmsg`=237 / `sendappmsg`=107）—— 需要 protobuf 结构与登录态，且违反使用协议。
+
+所以本仓库**只读**。要自动发通知，用系统通知、企业微信群机器人这类正规通道。
 
 ---
 
 ## 常见坑
 
-**`file is not a database (26)`** —— 密钥或用法不对。微信用的是 `sqlite3_key(db, <32 字节二进制>, 32)`，不是 `PRAGMA key="x'<64hex>'"`（raw key 语义），也不是 `PRAGMA key='<64hex 文本>'`（文本口令语义）。CLI 表达不了二进制口令，必须用 `wxq` 这种 C 层调用。
+**`file is not a database (26)`** —— key 或用法不对。必须是 `sqlite3_key(db, <32 字节二进制>, 32)`，`PRAGMA key="x'…'"` 和 `PRAGMA key='<hex 文本>'` 都是错的（CLI 表达不了二进制口令）。
 
-**每个账号一把 key** —— 小号 key 解不开大号库，否则一样是 rc=26。
+**每个账号一把 key** —— 小号 key 解不开大号库。
 
-**只用过河拆桥的一条** —— 解密/查询请在 `cp -c` 克隆上做（APFS 克隆，秒级、不占空间、不锁原库）。仓库里的 `wxq` 是只读的，但把只读工具指向正在写的库仍然不好。
+**`unsupported file format` / 打不开** —— 先 `cp -c` 克隆再查，别对正在写的库直接跑。
 
-**微信把库"工厂化"** —— 遇见过一次：微信把 `message_0.db` 挪到 `message_0.db.factory/<时间戳>/`，并用**新 salt 重新加密**（`rekey`），再建一个空库。那份档案用原 key 打不开。教训写在 [`docs/RECOVERY.md`](docs/RECOVERY.md)：**出事第一件事是别让微信继续写，把 `.factory` 目录和你的 `cp -c` 克隆都拷出来**。
+**`.factory` 目录** —— 微信偶尔会把库挪到 `message_0.db.factory/<时间戳>/` 并用新 salt 重新加密，那份档案用原 key 打不开。出事第一件事：**停掉微信，把 `.factory` 和你的克隆都拷出来**。复盘见 [`docs/RECOVERY.md`](docs/RECOVERY.md)。
+
+**卡片消息变 `[卡片消息]`** —— 应用消息正文是 XML，抽取失败时会退化为标签；`wxr export` 里用正则而不是 `ElementTree`（macOS 自带的 Python 可能缺 `expat`）。
 
 ---
 
-## 参考与致谢
+## 安全与边界
 
-- [`ydotdog/wechat-export-macos`](https://github.com/ydotdog/wechat-export-macos)：4.0.x 的 `x'<key><salt>'` 扫描方法与 SQLCipher 参数，是本项目的起点（4.2 上该方法失效）。
-- SQLCipher 4 的 page 格式与 HMAC 计算方式。
-- 微信 4.2 的 UI 栈是 Qt（`QNSWindow`/`QNSView`），不是 AppKit —— 这决定了发送侧所有注入路线都走不通。
+- 仓库里**没有**任何真实密钥、wxid、聊天内容；示例统一 `wxid_example_0001` / `<KEY>`。
+- 主密钥等价于你账号聊天数据的钥匙：别提交、别外发、别放进截图。
+- 只用在自己账号、自己设备上；解密他人的库在多数司法辖区是违法的。
+- 微信更新可能改变加密参数或库结构——升级后先跑 `wxr status` 和一条 `wxr chats` 验证。
 
-## License
+---
 
-MIT，见 [LICENSE](LICENSE)。仅供个人备份自己的数据使用。
+## 参考
+
+- [`ydotdog/wechat-export-macos`](https://github.com/ydotdog/wechat-export-macos)：4.0.x 的 `x'<key><salt>'` 扫描与 SQLCipher 参数，本项目的起点（4.2 上已失效）。
+- SQLCipher 4 的页格式与 HMAC 计算。
+- 微信 4.2 的 UI 栈是 Qt 而非 AppKit —— 这决定了发送侧所有 UI 注入路线都走不通。
+
+MIT License，见 [`LICENSE`](LICENSE)。

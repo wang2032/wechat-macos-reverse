@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import sqlite3, json, re, datetime, pathlib, collections
-HERE = pathlib.Path(__file__).resolve().parent
-OUT = HERE/"persona"
+from .. import config as _cfg
+
+OUT = _cfg.data_dir()/"persona"
 S = json.load(open(OUT/"persona.json"))
-db = sqlite3.connect(HERE/"export/wechat.db"); db.row_factory = sqlite3.Row
+db = sqlite3.connect(f"file:{_cfg.export_db()}?mode=ro", uri=True); db.row_factory = sqlite3.Row
 chats = {r["username"]: r["name"] for r in db.execute("select username,name from chats")}
 kinds = {r["username"]: r["kind"] for r in db.execute("select username,kind from chats")}
 def clean(s):

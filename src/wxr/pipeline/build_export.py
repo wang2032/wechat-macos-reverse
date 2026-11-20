@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """把已解密的微信库整理成可查询的数据 + 可读的聊天记录。"""
 import sqlite3, os, re, json, hashlib, html, datetime, pathlib, sys
-import zstdlib
+from .. import zstd as zstdlib
+from .. import config as _cfg
 
-ACCT = "wxid_example_0001"
-SELF = "wxid_example_0001"
-HERE = pathlib.Path(__file__).resolve().parent
-SRC = HERE/"out"/ACCT
-OUT = HERE/"export"; CHATS = OUT/"chats"
+ACCT = _cfg.account()
+SELF = ACCT
+HERE = _cfg.ROOT
+SRC = _cfg.out_dir()/ACCT
+OUT = _cfg.export_dir(); CHATS = OUT/"chats"
 OUT.mkdir(exist_ok=True); CHATS.mkdir(exist_ok=True)
 
 def md5(s): return hashlib.md5(s.encode()).hexdigest()

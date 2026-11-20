@@ -51,9 +51,9 @@ DB="$HOME/Library/Containers/com.tencent.xinWeChat/Data/Documents/xwechat_files/
 ### 场景 A：我就想查「某人上周说了什么」
 
 ```bash
-python3 scripts/chatquery.py --who "老婆" --days 7
-python3 scripts/chatquery.py --who "羽毛球" --yesterday --ask "最后定的是几点"
-python3 scripts/chatquery.py --who "项目群" --by 老王 --from 2026-10-20 --to 2026-11-15
+wxr ask --who "老婆" --days 7
+wxr ask --who "羽毛球" --yesterday --ask "最后定的是几点"
+wxr ask --who "项目群" --by 老王 --from 2026-10-20 --to 2026-11-15
 ```
 
 `--who` 支持备注、昵称、群名的模糊匹配，命中多个会列出来让你选。加 `--json` 可以喂给别的脚本。
@@ -61,9 +61,10 @@ python3 scripts/chatquery.py --who "项目群" --by 老王 --from 2026-10-20 --t
 ### 场景 B：我想把全部记录导出来自己分析
 
 ```bash
-python3 scripts/export.py --account <账号> --key "$KEY"    # 解出 out/<账号>/*.db
-python3 scripts/build_export.py                            # 汇成 export/wechat.db
-python3 scripts/gen_html.py                                # 生成可离线浏览的网页
+wxr init --account <账号> --key "$KEY"    # 只写一次配置
+wxr export                                # 解出 out/<账号>/*.db
+
+wxr html                                  # 生成可离线浏览的网页
 open export/index.html
 ```
 
@@ -92,8 +93,8 @@ python3 wxdigest.py --json                # 结构化，给 agent 二次加工
 ### 场景 D：我想在 DSH 里点开就看
 
 ```bash
-node dsh-plugin/setup.mjs --account <账号> --key "$KEY"
-dsh plugin install ./dsh-plugin          # 或用插件管理界面装 tgz
+node plugins/dsh/setup.mjs --account <账号> --key "$KEY"
+dsh plugin install ./plugins/dsh          # 或用插件管理界面装 tgz
 ```
 
 装完刷新 DSH 页面，左侧栏出现「微信记录」：左栏会话、右栏消息、顶部搜索、发送者过滤、AI 总结抽屉。
@@ -103,8 +104,8 @@ dsh plugin install ./dsh-plugin          # 或用插件管理界面装 tgz
 ### 场景 E：我想让 AI 学我说话
 
 ```bash
-python3 scripts/persona_build.py     # 统计：句长/标点/语气词/连发/延迟/作息
-python3 scripts/persona_gen.py       # → persona/system_prompt.md（直接粘给模型用）
+wxr persona --viz                     # 统计 + 画像卡 + 可视化页
+# 同一命令一并生成 system_prompt.md
 python3 assistant/make_skill.py      # → assistant/skill.md（当 system prompt 更完整）
 ```
 

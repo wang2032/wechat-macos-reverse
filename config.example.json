@@ -1,0 +1,21 @@
+{
+  "_comment": "拷到 ~/.config/wxr/config.json（或设 WXR_CONFIG 指向这里），填自己的值。密钥不要提交进 git。",
+  "account": "wxid_example_0001",
+  "key": "<64 位十六进制，由 wxhook.dylib 抓到的 pw>",
+  "wxq": "build/wxq",
+  "export_db": "export/wechat.db",
+  "channels": {
+    "macos": true,
+    "stdout": true,
+    "inbox": false,
+    "wecom": false
+  },
+  "wecom_webhook": "",
+  "llm": {
+    "api": "openai",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-chat",
+    "model_fast": "deepseek-chat",
+    "api_key_env": "DEEPSEEK_API_KEY"
+  }
+}
