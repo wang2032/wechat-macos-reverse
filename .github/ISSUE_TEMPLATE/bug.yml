@@ -1,0 +1,42 @@
+name: Bug / 工具报错
+description: 工具跑不通、解密失败、数据对不上
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提之前先确认：**只读自己的账号**、不要把密钥或聊天内容贴进来（贴了我会删）。
+  - type: input
+    id: ver
+    attributes:
+      label: 微信版本 / macOS
+      placeholder: "4.2.0 / macOS 26.2 arm64"
+    validations:
+      required: true
+  - type: dropdown
+    id: step
+    attributes:
+      label: 卡在哪一步
+      options:
+        - 编译工具
+        - 改签/注入（拿不到密钥）
+        - 解密（file is not a database / rc=26）
+        - 查询/导出脚本
+        - DSH 插件页面
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 复现步骤与报错原文
+      description: 命令 + 原样贴报错（密钥请打码成 `<KEY>`）
+      placeholder: |
+        $ ./bin/wxq ... 
+        prepare rc=26 file is not a database
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: 已经试过什么
