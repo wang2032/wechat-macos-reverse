@@ -22,6 +22,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import datetime as _dt
 import pathlib
 import runpy
@@ -84,8 +85,18 @@ def cmd_init(a) -> int:
 def cmd_status(a) -> int:
     c = cfg.load()
     print(f"配置文件   {cfg.config_path()} {'✓' if cfg.config_path().exists() else '✗'}")
-    print(f"账号       {c.get('account') or '（未配置）'}")
-    print(f"密钥       {_mask(c.get('key') or '') if c.get('key') else '（未配置）'}")
+    # 账号/密钥以 config 的解析结果为准（环境变量优先于文件）
+    try:
+        acct = cfg.account()
+        src = "环境变量" if os.environ.get("WXR_ACCOUNT") else "配置"
+        print(f"账号       {acct}（{src}）")
+    except SystemExit:
+        acct = ""
+        print("账号       （未配置）  → ./wxr init --account <账号> --key <KEY>")
+    try:
+        print(f"密钥       {_mask(cfg.key(acct or None))}（环境变量或配置）")
+    except SystemExit:
+        print("密钥       （未配置）")
     print(f"wxq        {cfg.wxq_path()} {'✓' if cfg.wxq_path().exists() else '✗ 需 make tools'}")
     edb = cfg.export_db()
     print(f"汇总库     {edb} {'✓ %d MB' % (edb.stat().st_size // 1048576) if edb.exists() else '✗ 先跑 wxr export'}")
