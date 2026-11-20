@@ -4,6 +4,16 @@
 
 > 目标版本：WeChat for macOS **4.2.0**（`com.tencent.winWeChat`，Developer ID `5A4RE8SF68`）
 
+## 从这里开始
+
+| 想看什么 | 去哪 |
+|---|---|
+| **都有哪些功能、每个怎么调、坑在哪** | [**`docs/FEATURES.md`**](docs/FEATURES.md) |
+| **照着做一遍（拿密钥 → 查 → 导 → 日报 → DSH 页面）** | [**`docs/USAGE.md`**](docs/USAGE.md) |
+| 加密参数、密钥语义、库表结构、发送侧现状 | [`docs/REVERSE_ENGINEERING.md`](docs/REVERSE_ENGINEERING.md) |
+| 编译每个工具 | [`docs/BUILD.md`](docs/BUILD.md) |
+| 库被 `.factory` 化 / 换钥后怎么救 | [`docs/RECOVERY.md`](docs/RECOVERY.md) |
+
 ---
 
 ## ⚠️ 先读这一段
